@@ -14,10 +14,13 @@ Compare `ginn-lp` (single-target) with `codes` (multi-target) on ENB and Agricul
 - `codes` uses: Standard format (samples as rows, features as columns)
 
 ### 3. **Negative Values**
-- `ginn-lp`: Cannot handle negatives (uses log activation)
-- **Solution**: Shift data to be positive before feeding to ginn-lp
-  - For features: Already positive after MinMaxScaler + 1e-6 ✓
-  - For targets: May need shifting if negative after log-transform (Agriculture)
+- `ginn-lp`: Uses `log_activation` internally, so inputs must stay strictly positive.
+- **Solution used here**:
+  - **ENB features**: MinMaxScaler + `MIN_POSITIVE` (we use `1e-2` to avoid NaN in `log_activation`)
+  - **Agriculture features**: MinMaxScaler + `1e-6` (same as `codes/Agriculture/mtr_ginn_agric_sym.py`)
+  - **Targets**:
+    - **ENB**: untouched (raw)
+    - **Agriculture**: log-transform (same as `codes`)
 
 ### 4. **Data Splitting**
 - `codes`: Uses `train_test_split(test_size=0.2, random_state=42)` → **80/20 split**
@@ -32,17 +35,16 @@ Compare `ginn-lp` (single-target) with `codes` (multi-target) on ENB and Agricul
 
 ### ✅ Step 1: Data Preparation Scripts
 - Created `run_ENB/scripts/prepare_data.py` - Prepares ENB data (Heating/Cooling split)
-- Created `run_AGRIC/scripts/prepare_data.py` - Prepares Agriculture data (Sustainability/ConsumerTrend split)
-- Both scripts match `codes` preprocessing exactly
+- `run_AGRIC/scripts/prepare_data.py` exists (older approach), but **current approach does NOT require pre-splitting** for Agriculture.
 
 ### ✅ Step 2: Training Scripts
 - Created `run_enb.py` - For ENB dataset (no log-transform, random_state=42)
-- Created `run_agric.py` - For Agriculture dataset (log-transform, random_state=100)
+- Updated `run_agric.py` - For Agriculture dataset **loading the same raw CSVs as `codes` and doing the same merge + encoding** (log-transform target, random_state=100)
 - Both scripts handle normalization and save results as JSON
 
 ### ⏳ Step 3: Evaluation Scripts
 - Metrics are automatically computed and saved in JSON files
-- Comparison scripts can be created to extract and compare results
+- Use `extract_comparison.py` (recommended) and `compare_results.py` (ENB-focused quick compare)
 
 ## How to Run
 
@@ -54,22 +56,22 @@ cd /raid/hussein/project/ginn-lp
 
 ### ENB Dataset
 
-#### 1. Prepare Data (if not already done)
+#### 1. Prepare Data (optional)
 ```bash
 cd run_ENB/scripts
 python prepare_data.py
 ```
 
-This creates:
-- `run_ENB/data/Heating_train.csv` and `Heating_test.csv`
-- `run_ENB/data/Cooling_train.csv` and `Cooling_test.csv`
+This regenerates split files under `run_ENB/data/split/`. You can also just use the already-prepared:
+- `run_ENB/data/ENB2012_Heating_Load.csv` (Y1)
+- `run_ENB/data/ENB2012_Cooling_Load.csv` (Y2)
 
 #### 2. Train on Heating Load (Y1)
 ```bash
 python run_enb.py \
     --data run_ENB/data/ENB2012_Heating_Load.csv \
     --format csv \
-    --num_epochs 500 \
+    --num_epochs 20000 \
     --start_ln_blocks 2 \
     --growth_steps 3 \
     --output_dir run_ENB/outputs
@@ -80,7 +82,7 @@ python run_enb.py \
 python run_enb.py \
     --data run_ENB/data/ENB2012_Cooling_Load.csv \
     --format csv \
-    --num_epochs 500 \
+    --num_epochs 20000 \
     --start_ln_blocks 2 \
     --growth_steps 3 \
     --output_dir run_ENB/outputs
@@ -96,85 +98,44 @@ Format: `ginnlp_{DATASET}_{data_basename}_E{epochs}_B{blocks}_G{growth}_{timesta
 
 ### Agriculture Dataset
 
-#### 1. Prepare Data (if not already done)
-```bash
-cd run_AGRIC/scripts
-python prepare_data.py
-```
+#### Data source (same as `codes`)
+Agriculture uses the two raw CSVs, just like `codes/Agriculture/mtr_ginn_agric_sym.py`:
+- `run_AGRIC/data/farmer_advisor_dataset.csv`
+- `run_AGRIC/data/market_researcher_dataset.csv`
 
-This creates:
-- `run_AGRIC/data/Sustainability_train.csv` and `Sustainability_test.csv`
-- `run_AGRIC/data/ConsumerTrend_train.csv` and `ConsumerTrend_test.csv`
+`run_agric.py` reads those files, merges and encodes the same way as `codes`, then trains a **single target** (Y1 or Y2).
 
-#### 2. Train on Sustainability Score (Y1)
+#### 1. Train on Sustainability Score (Y1)
 ```bash
 python run_agric.py \
-    --data run_AGRIC/data/Sustainability_train.csv \
-    --format csv \
-    --num_epochs 500 \
-    --start_ln_blocks 2 \
-    --growth_steps 3 \
+    --data_dir run_AGRIC/data \
+    --target Y1 \
+    --sample_fraction 0.1 \
+    --num_epochs 20000 \
+    --start_ln_blocks 3 \
+    --growth_steps 1 \
     --output_dir run_AGRIC/outputs
 ```
 
-#### 3. Train on Consumer Trend Index (Y2)
+#### 2. Train on Consumer Trend Index (Y2)
 ```bash
 python run_agric.py \
-    --data run_AGRIC/data/ConsumerTrend_train.csv \
-    --format csv \
-    --num_epochs 500 \
-    --start_ln_blocks 2 \
-    --growth_steps 3 \
+    --data_dir run_AGRIC/data \
+    --target Y2 \
+    --sample_fraction 0.1 \
+    --num_epochs 20000 \
+    --start_ln_blocks 3 \
+    --growth_steps 1 \
     --output_dir run_AGRIC/outputs
 ```
 
 **Output Filename Format:**
 ```
-ginnlp_AGRIC_Sustainability_train_E500_B2_G3_20260128_142530.json
-ginnlp_AGRIC_ConsumerTrend_train_E500_B2_G3_20260128_142530.json
+ginnlp_AGRIC_AGRIC_Y1_E20000_B3_G1_20260128_142530.json
+ginnlp_AGRIC_AGRIC_Y2_E20000_B3_G1_20260128_142530.json
 ```
 
-## Extracting Metrics from JSON Files
-
-### Python Script to Extract Metrics
-
-Create `extract_metrics.py`:
-
-```python
-import json
-import glob
-import os
-
-def extract_metrics_from_json(json_file):
-    """Extract metrics from a ginn-lp JSON output file"""
-    with open(json_file, 'r') as f:
-        data = json.load(f)
-    
-    metrics = data.get('metrics', {})
-    dataset_name = data['experiment_info']['dataset_name']
-    hyperparams = f"E{data['experiment_info']['num_epochs']}_B{data['experiment_info']['start_ln_blocks']}_G{data['experiment_info']['growth_steps']}"
-    
-    return {
-        'dataset': dataset_name,
-        'hyperparams': hyperparams,
-        'MSE': metrics.get('MSE'),
-        'MAE': metrics.get('MAE'),
-        'RMSE': metrics.get('RMSE'),
-        'MAPE': metrics.get('MAPE')
-    }
-
-# Example usage
-output_dir = 'run_ENB/outputs'
-json_files = glob.glob(os.path.join(output_dir, 'ginnlp_*.json'))
-
-for json_file in json_files:
-    print(f"\n{os.path.basename(json_file)}")
-    metrics = extract_metrics_from_json(json_file)
-    print(f"  MSE: {metrics['MSE']:.6f}")
-    print(f"  MAE: {metrics['MAE']:.6f}")
-    print(f"  RMSE: {metrics['RMSE']:.6f}")
-    print(f"  MAPE: {metrics['MAPE']:.4f}%")
-```
+## Extracting / Comparing Metrics
 
 ## Comparison Table Template
 
@@ -218,6 +179,14 @@ python extract_comparison.py \
     --ginnlp_dir run_AGRIC/outputs \
     --codes_file ../codes/Agriculture/output/findings_0.1/symbolic/mtr_ginn_agric_sym_*.json \
     --dataset Agriculture
+```
+
+### Quick ENB-only comparison (handy while iterating)
+```bash
+python compare_results.py \
+  run_ENB/outputs/ginnlp_ENB_*.json \
+  ../codes/ENB/output/symbolic/mtr_ginn_2initial_8max_blocks_20250916.json \
+  "Heating Load (Y1)"
 ```
 
 The script will:
@@ -284,18 +253,18 @@ ginn-lp/
 │   ├── data/            # Preprocessed data (train/test splits for Y1, Y2)
 │   │   ├── ENB2012_Heating_Load.csv
 │   │   ├── ENB2012_Cooling_Load.csv
-│   │   ├── Heating_train.csv
-│   │   ├── Heating_test.csv
-│   │   ├── Cooling_train.csv
-│   │   └── Cooling_test.csv
+│   │   └── split/
+│   │       ├── Heating_train.csv
+│   │       ├── Heating_test.csv
+│   │       ├── Cooling_train.csv
+│   │       └── Cooling_test.csv
 │   ├── outputs/         # Models, equations, metrics JSON
 │   └── scripts/         # Data prep scripts
 ├── run_AGRIC/
-│   ├── data/            # Preprocessed data (train/test splits for Y1, Y2)
-│   │   ├── Sustainability_train.csv
-│   │   ├── Sustainability_test.csv
-│   │   ├── ConsumerTrend_train.csv
-│   │   └── ConsumerTrend_test.csv
+│   ├── data/            # Raw CSVs (same inputs as codes)
+│   │   ├── farmer_advisor_dataset.csv
+│   │   ├── market_researcher_dataset.csv
+│   │   └── old/         # older intermediate files (kept for reference)
 │   ├── outputs/         # Models, equations, metrics JSON
 │   └── scripts/         # Data prep scripts
 └── STRATEGY.md          # This file

@@ -34,6 +34,44 @@ Below, we outline the steps to discover the Coulomb's law equation using GINN-LP
     ```
 Here, the data file should be a csv or tsv with any number of feature columns and a target column. The target column should be named as "target".
 
+## Project scripts: ENB + Agriculture (comparison vs `codes`)
+
+This repo includes extra scripts under the project root to run **ENB** and **Agriculture** in a way that matches the preprocessing used in `codes/`.
+
+- `run_enb.py`: single-target ENB runs (Y1 Heating Load, Y2 Cooling Load)
+- `run_agric.py`: single-target Agriculture runs using the **same raw CSV inputs and merge logic** as `codes/Agriculture/mtr_ginn_agric_sym.py`
+- `STRATEGY.md`: step-by-step commands and how to build the comparison tables
+- `extract_comparison.py`: extract metrics from JSON outputs and print a markdown comparison table
+- `compare_results.py`: quick ENB-only compare against a `codes` JSON
+
+### Quickstart (ENB)
+
+```bash
+conda activate ginn
+cd /raid/hussein/project/ginn-lp
+
+# Y1 (Heating Load)
+python run_enb.py --data run_ENB/data/ENB2012_Heating_Load.csv --format csv --num_epochs 20000 --start_ln_blocks 2 --growth_steps 3 --output_dir run_ENB/outputs
+
+# Y2 (Cooling Load)
+python run_enb.py --data run_ENB/data/ENB2012_Cooling_Load.csv --format csv --num_epochs 20000 --start_ln_blocks 2 --growth_steps 3 --output_dir run_ENB/outputs
+```
+
+### Quickstart (Agriculture)
+
+```bash
+conda activate ginn
+cd /raid/hussein/project/ginn-lp
+
+# Y1 (Sustainability_Score)
+python run_agric.py --data_dir run_AGRIC/data --target Y1 --sample_fraction 0.1 --num_epochs 20000 --start_ln_blocks 3 --growth_steps 1 --output_dir run_AGRIC/outputs
+
+# Y2 (Consumer_Trend_Index)
+python run_agric.py --data_dir run_AGRIC/data --target Y2 --sample_fraction 0.1 --num_epochs 20000 --start_ln_blocks 3 --growth_steps 1 --output_dir run_AGRIC/outputs
+```
+
+For details (what is matched, where metrics are stored in JSON, and comparison commands), see `STRATEGY.md`.
+
 ## Scikit-learn compatible API
 
 We also provide a scikit-learn compatible API for GINN-LP. The GINN-LP package should first be installed using pip.
