@@ -10,7 +10,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolu
 from ginnlp.ginnlp import GINNLP
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Train GINN-LP with same normalization as codes/ENB/mtr_ginn_sym.py')
+    parser = argparse.ArgumentParser(description='Train GINN-LP on ENB dataset (same normalization as codes/ENB/mtr_ginn_sym.py)')
     parser.add_argument('--data', type=str, required=True, help='Path to dataset file')
     parser.add_argument('--format', type=str, default='csv', help='Format of dataset file (csv or tsv)')
     parser.add_argument('--output_dir', type=str, default='outputs', help='Output directory for results')
@@ -39,7 +39,8 @@ if __name__ == '__main__':
         raise ValueError('Invalid format. Use "csv" or "tsv"')
     
     print("=" * 60)
-    print("GINN-LP Training with codes-compatible normalization")
+    print("GINN-LP Training on ENB Dataset")
+    print("Normalization: MinMaxScaler + 1e-6 (same as codes/ENB/mtr_ginn_sym.py)")
     print("=" * 60)
     print(f"Data file: {args.data}")
     print(f"Format: {args.format}")
@@ -64,20 +65,30 @@ if __name__ == '__main__':
     print(f"Train: X={X_train.shape}, y={y_train.shape}")
     print(f"Test:  X={X_test.shape}, y={y_test.shape}")
     
-    # ================= Normalize Features (same as codes/ENB/mtr_ginn_sym.py) =================
-    print("\nNormalizing features with MinMaxScaler + 1e-6 (same as codes)...")
+    # ================= Normalize Features for ginn-lp (higher minimum to avoid NaN) =================
+    # Use higher minimum value (MIN_POSITIVE) instead of 1e-6 to ensure all values stay positive
+    # during intermediate computations in log_activation
+    MIN_POSITIVE = 1e-2  # Minimum positive value for log activation (same as ginn-lp_hex)
+    
+    print(f"\nNormalizing features with MinMaxScaler + MIN_POSITIVE (MIN_POSITIVE={MIN_POSITIVE})...")
+    print(f"  Note: Using higher minimum than codes (1e-6) to prevent NaN in log_activation")
     scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train) + 1e-6
-    X_test_scaled = scaler.transform(X_test) + 1e-6
+    X_train_scaled = scaler.fit_transform(X_train) + MIN_POSITIVE
+    X_test_scaled = scaler.transform(X_test) + MIN_POSITIVE
+    
+    # Ensure all values are strictly positive (safety check)
+    X_train_scaled = np.maximum(X_train_scaled, MIN_POSITIVE)
+    X_test_scaled = np.maximum(X_test_scaled, MIN_POSITIVE)
     
     print(f"Scaled feature ranges:")
     print(f"  Train: min={X_train_scaled.min():.6f}, max={X_train_scaled.max():.6f}")
     print(f"  Test:  min={X_test_scaled.min():.6f}, max={X_test_scaled.max():.6f}")
     
-    # Targets are NOT normalized (same as codes)
-    print(f"\nTargets NOT normalized (same as codes):")
+    # Targets are NOT normalized (same as codes/ENB)
+    print(f"\nTargets NOT normalized (same as codes/ENB):")
     print(f"  Train: min={y_train.min():.2f}, max={y_train.max():.2f}, mean={y_train.mean():.2f}")
     print(f"  Test:  min={y_test.min():.2f}, max={y_test.max():.2f}, mean={y_test.mean():.2f}")
+    print(f"  Note: Targets are already positive (ENB range: 6.01-43.10), so no transformation needed")
     
     # ================= Train GINN-LP =================
     print("\n" + "=" * 60)
@@ -113,7 +124,7 @@ if __name__ == '__main__':
     if y_pred.ndim > 1:
         y_pred = y_pred.flatten()
     
-    # Calculate metrics
+    # Calculate metrics on original scale (to compare with codes)
     mse = mean_squared_error(y_test, y_pred)
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mse)
@@ -133,16 +144,32 @@ if __name__ == '__main__':
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Generate filename from input data path
+    # Determine Y1/Y2 from filename
     data_basename = os.path.splitext(os.path.basename(args.data))[0]
+    if 'Heating' in data_basename or 'heating' in data_basename.lower():
+        target_id = 'Y1'
+        target_name = 'Heating_Load'
+    elif 'Cooling' in data_basename or 'cooling' in data_basename.lower():
+        target_id = 'Y2'
+        target_name = 'Cooling_Load'
+    else:
+        target_id = 'Y?'
+        target_name = data_basename
+    
+    # Generate filename with Y1/Y2 label
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_filename = f"ginnlp_{data_basename}_{timestamp}.json"
+    # Include key hyperparameters in filename
+    hyperparams_str = f"E{args.num_epochs}_B{args.start_ln_blocks}_G{args.growth_steps}"
+    output_filename = f"ginnlp_ENB_ENB2012_{target_id}_{target_name}_{hyperparams_str}_{timestamp}.json"
     output_path = os.path.join(args.output_dir, output_filename)
     
     # Prepare results dictionary
     results = {
         "experiment_info": {
             "timestamp": timestamp,
+            "dataset": "ENB",
+            "target_id": target_id,
+            "target_name": target_name,
             "data_file": args.data,
             "dataset_name": data_basename,
             "num_epochs": args.num_epochs,
@@ -156,7 +183,10 @@ if __name__ == '__main__':
             "round_digits": args.round_digits,
             "test_size": args.test_size,
             "random_state": args.random_state,
-            "normalization": "MinMaxScaler + 1e-6 (same as codes/ENB/mtr_ginn_sym.py)"
+            "normalization": f"MinMaxScaler + MIN_POSITIVE (MIN_POSITIVE={MIN_POSITIVE}) - higher than codes (1e-6) to prevent NaN in log_activation",
+            "target_transform": "none (raw values, same as codes/ENB/mtr_ginn_sym.py)",
+            "min_positive": float(MIN_POSITIVE),
+            "note": "Only features use higher MIN_POSITIVE (1e-2 vs 1e-6). Targets unchanged (already positive). log_activation unchanged."
         },
         "data_info": {
             "n_features": X.shape[1],

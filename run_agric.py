@@ -10,7 +10,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, mean_absolu
 from ginnlp.ginnlp import GINNLP
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Train GINN-LP with same normalization as codes/ENB/mtr_ginn_sym.py')
+    parser = argparse.ArgumentParser(description='Train GINN-LP on Agriculture dataset (same normalization as codes/Agriculture/mtr_ginn_agric_sym.py)')
     parser.add_argument('--data', type=str, required=True, help='Path to dataset file')
     parser.add_argument('--format', type=str, default='csv', help='Format of dataset file (csv or tsv)')
     parser.add_argument('--output_dir', type=str, default='outputs', help='Output directory for results')
@@ -26,7 +26,7 @@ if __name__ == '__main__':
                         help='Fraction of epochs to regularization change')
     parser.add_argument('--train_iter', type=int, default=4, help='Number of training iterations')
     parser.add_argument('--test_size', type=float, default=0.2, help='Test set size (default: 0.2)')
-    parser.add_argument('--random_state', type=int, default=42, help='Random state for train/test split (default: 42)')
+    parser.add_argument('--random_state', type=int, default=100, help='Random state for train/test split (default: 100 for Agriculture)')
     
     args = parser.parse_args()
     
@@ -39,7 +39,9 @@ if __name__ == '__main__':
         raise ValueError('Invalid format. Use "csv" or "tsv"')
     
     print("=" * 60)
-    print("GINN-LP Training with codes-compatible normalization")
+    print("GINN-LP Training on Agriculture Dataset")
+    print("Normalization: MinMaxScaler + 1e-6, log-transform targets")
+    print("(same as codes/Agriculture/mtr_ginn_agric_sym.py)")
     print("=" * 60)
     print(f"Data file: {args.data}")
     print(f"Format: {args.format}")
@@ -56,7 +58,7 @@ if __name__ == '__main__':
     print(f"Target shape: {y.shape}")
     print(f"Target range: [{y.min():.2f}, {y.max():.2f}], mean: {y.mean():.2f}")
     
-    # ================= Split (same as codes/ENB/mtr_ginn_sym.py) =================
+    # ================= Split (same as codes/Agriculture/mtr_ginn_agric_sym.py) =================
     print(f"\nSplitting data (test_size={args.test_size}, random_state={args.random_state})...")
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=args.test_size, random_state=args.random_state
@@ -64,7 +66,7 @@ if __name__ == '__main__':
     print(f"Train: X={X_train.shape}, y={y_train.shape}")
     print(f"Test:  X={X_test.shape}, y={y_test.shape}")
     
-    # ================= Normalize Features (same as codes/ENB/mtr_ginn_sym.py) =================
+    # ================= Normalize Features (same as codes/Agriculture) =================
     print("\nNormalizing features with MinMaxScaler + 1e-6 (same as codes)...")
     scaler = MinMaxScaler()
     X_train_scaled = scaler.fit_transform(X_train) + 1e-6
@@ -74,10 +76,18 @@ if __name__ == '__main__':
     print(f"  Train: min={X_train_scaled.min():.6f}, max={X_train_scaled.max():.6f}")
     print(f"  Test:  min={X_test_scaled.min():.6f}, max={X_test_scaled.max():.6f}")
     
-    # Targets are NOT normalized (same as codes)
-    print(f"\nTargets NOT normalized (same as codes):")
-    print(f"  Train: min={y_train.min():.2f}, max={y_train.max():.2f}, mean={y_train.mean():.2f}")
-    print(f"  Test:  min={y_test.min():.2f}, max={y_test.max():.2f}, mean={y_test.mean():.2f}")
+    # ================= Log-transform Targets (same as codes/Agriculture) =================
+    print(f"\nApplying log-transform to targets (Agriculture dataset - same as codes)...")
+    print(f"  Before log-transform:")
+    print(f"    Train: min={y_train.min():.2f}, max={y_train.max():.2f}, mean={y_train.mean():.2f}")
+    print(f"    Test:  min={y_test.min():.2f}, max={y_test.max():.2f}, mean={y_test.mean():.2f}")
+    
+    y_train_log = np.log(y_train)
+    y_test_log = np.log(y_test)
+    
+    print(f"  After log-transform:")
+    print(f"    Train: min={y_train_log.min():.2f}, max={y_train_log.max():.2f}, mean={y_train_log.mean():.2f}")
+    print(f"    Test:  min={y_test_log.min():.2f}, max={y_test_log.max():.2f}, mean={y_test_log.mean():.2f}")
     
     # ================= Train GINN-LP =================
     print("\n" + "=" * 60)
@@ -97,7 +107,7 @@ if __name__ == '__main__':
         train_iter=args.train_iter
     )
     
-    model.fit(X_train_scaled, y_train)
+    model.fit(X_train_scaled, y_train_log)
     
     print(f"\nRecovered equation: {model.recovered_eq}")
     
@@ -107,23 +117,38 @@ if __name__ == '__main__':
     print("=" * 60)
     
     # Predict on test set (using normalized features)
-    y_pred = model.predict(X_test_scaled)
+    y_pred_log = model.predict(X_test_scaled)
     
     # Flatten predictions if needed
-    if y_pred.ndim > 1:
-        y_pred = y_pred.flatten()
+    if y_pred_log.ndim > 1:
+        y_pred_log = y_pred_log.flatten()
     
-    # Calculate metrics
+    # Convert back from log space for metrics (compare with original y_test)
+    y_pred = np.exp(y_pred_log)
+    
+    # Calculate metrics on original scale
     mse = mean_squared_error(y_test, y_pred)
     mae = mean_absolute_error(y_test, y_pred)
     rmse = np.sqrt(mse)
     mape = mean_absolute_percentage_error(y_test, y_pred) * 100
     
-    print(f"\nTest Set Metrics:")
+    print(f"\nTest Set Metrics (on original scale, after exp transform):")
     print(f"  MSE:  {mse:.6f}")
     print(f"  MAE:  {mae:.6f}")
     print(f"  RMSE: {rmse:.6f}")
     print(f"  MAPE: {mape:.4f}%")
+    
+    # Also calculate metrics in log space for reference
+    mse_log = mean_squared_error(y_test_log, y_pred_log)
+    mae_log = mean_absolute_error(y_test_log, y_pred_log)
+    rmse_log = np.sqrt(mse_log)
+    mape_log = mean_absolute_percentage_error(y_test_log, y_pred_log) * 100
+    
+    print(f"\nTest Set Metrics (in log space):")
+    print(f"  MSE:  {mse_log:.6f}")
+    print(f"  MAE:  {mae_log:.6f}")
+    print(f"  RMSE: {rmse_log:.6f}")
+    print(f"  MAPE: {mape_log:.4f}%")
     
     # ================= Save Results =================
     print("\n" + "=" * 60)
@@ -133,16 +158,19 @@ if __name__ == '__main__':
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)
     
-    # Generate filename from input data path
+    # Generate filename with hyperparameters for easy identification
     data_basename = os.path.splitext(os.path.basename(args.data))[0]
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_filename = f"ginnlp_{data_basename}_{timestamp}.json"
+    # Include key hyperparameters in filename
+    hyperparams_str = f"E{args.num_epochs}_B{args.start_ln_blocks}_G{args.growth_steps}"
+    output_filename = f"ginnlp_AGRIC_{data_basename}_{hyperparams_str}_{timestamp}.json"
     output_path = os.path.join(args.output_dir, output_filename)
     
     # Prepare results dictionary
     results = {
         "experiment_info": {
             "timestamp": timestamp,
+            "dataset": "Agriculture",
             "data_file": args.data,
             "dataset_name": data_basename,
             "num_epochs": args.num_epochs,
@@ -156,26 +184,40 @@ if __name__ == '__main__':
             "round_digits": args.round_digits,
             "test_size": args.test_size,
             "random_state": args.random_state,
-            "normalization": "MinMaxScaler + 1e-6 (same as codes/ENB/mtr_ginn_sym.py)"
+            "normalization": "MinMaxScaler + 1e-6 (same as codes/Agriculture/mtr_ginn_agric_sym.py)",
+            "target_transform": "log-transform (same as codes)"
         },
         "data_info": {
             "n_features": X.shape[1],
             "n_train": len(X_train),
             "n_test": len(X_test),
-            "target_range_train": [float(y_train.min()), float(y_train.max())],
-            "target_mean_train": float(y_train.mean()),
-            "target_range_test": [float(y_test.min()), float(y_test.max())],
-            "target_mean_test": float(y_test.mean())
+            "target_range_train_original": [float(y_train.min()), float(y_train.max())],
+            "target_mean_train_original": float(y_train.mean()),
+            "target_range_test_original": [float(y_test.min()), float(y_test.max())],
+            "target_mean_test_original": float(y_test.mean()),
+            "target_range_train_log": [float(y_train_log.min()), float(y_train_log.max())],
+            "target_mean_train_log": float(y_train_log.mean()),
+            "target_range_test_log": [float(y_test_log.min()), float(y_test_log.max())],
+            "target_mean_test_log": float(y_test_log.mean())
         },
-        "metrics": {
+        "metrics_original_scale": {
             "MSE": float(mse),
             "MAE": float(mae),
             "RMSE": float(rmse),
-            "MAPE": float(mape)
+            "MAPE": float(mape),
+            "note": "Metrics computed after exp() transform back to original scale"
+        },
+        "metrics_log_scale": {
+            "MSE": float(mse_log),
+            "MAE": float(mae_log),
+            "RMSE": float(rmse_log),
+            "MAPE": float(mape_log),
+            "note": "Metrics computed in log space (as model was trained)"
         },
         "recovered_equation": str(model.recovered_eq),
         "model_info": {
-            "final_blocks": model.blk_count if hasattr(model, 'blk_count') else None
+            "final_blocks": model.blk_count if hasattr(model, 'blk_count') else None,
+            "note": "Equation is in log space. To get predictions in original scale, apply exp()"
         }
     }
     

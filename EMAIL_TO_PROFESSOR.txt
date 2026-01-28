@@ -1,0 +1,50 @@
+Subject: Issue with ginn-lp Comparison and Proposed Solution
+
+Dear Professor [Name],
+
+I'm writing to report an issue we encountered while attempting to compare ginn-lp with our MTR-GINN-LP implementation on the ENB dataset, and to request your approval for a proposed solution.
+
+**The Problem:**
+
+ginn-lp uses a log_activation function (tf.math.log(x)) which requires strictly positive inputs. When we attempted to use identical preprocessing as our MTR-GINN-LP implementation (MinMaxScaler + 1e-6 on features, no normalization on targets), the training produced NaN values that propagated through the entire model, causing complete training failure.
+
+Even though:
+- Features are positive (MinMaxScaler + 1e-6 ensures values in [1e-6, 1+1e-6])
+- Targets are positive (ENB Heating/Cooling Load values range from 6.01 to 43.10)
+
+The log_activation function is applied to intermediate values during forward/backward passes, and these intermediate computations can produce values ≤ 0 due to weight initialization, gradient updates, or numerical precision issues, leading to NaN.
+
+**Proposed Solution:**
+
+Instead of modifying ginn-lp's log_activation function (which would change its fundamental behavior), we propose using a higher minimum value in the MinMaxScaler normalization:
+
+- **Features**: Use `MinMaxScaler + MIN_POSITIVE` where `MIN_POSITIVE = 1e-2` (0.01) instead of `1e-6`
+  - This gives feature range: [0.01, 1.01] instead of [1e-6, 1.000001]
+  - Ensures all values stay safely positive for log_activation
+
+- **Targets**: Scale targets proportionally to match the feature range [MIN_POSITIVE, 1+MIN_POSITIVE]
+  - Preserves relative relationships between target values
+  - Keeps targets in the same scale as features for numerical stability
+  - Scaling is reversed when computing metrics for comparison with codes
+
+This approach:
+1. Prevents NaN errors without modifying ginn-lp's architecture
+2. Is consistent with how ginn-lp_hex handles this issue (they use MIN_POSITIVE = 1e-2)
+3. Maintains comparability by reversing the scaling for metrics
+4. Is clearly documented in the output JSON files
+
+**Trade-off:**
+
+The preprocessing will differ slightly from our MTR-GINN-LP (0.01 vs 1e-6), but this is necessary for ginn-lp to function. We will document this difference clearly in all results and acknowledge it in any comparisons.
+
+**Question:**
+
+Would you approve this approach, or would you prefer a different solution? Alternative options include:
+- Modifying ginn-lp's log_activation to handle non-positive values (but this changes ginn-lp's behavior)
+- Accepting that direct comparison may not be possible due to architectural differences
+- Using a different normalization scheme entirely
+
+I look forward to your guidance on how to proceed.
+
+Best regards,
+[Your Name]

@@ -1,0 +1,48 @@
+{
+  "experiment_info": {
+    "timestamp": "20260128_150612",
+    "dataset": "ENB",
+    "data_file": "run_ENB/data/ENB2012_Heating_Load.csv",
+    "dataset_name": "ENB2012_Heating_Load",
+    "num_epochs": 500,
+    "start_ln_blocks": 2,
+    "growth_steps": 3,
+    "learning_rate": 0.01,
+    "l1_reg": 0.0001,
+    "l2_reg": 0.0001,
+    "reg_change": 0.5,
+    "train_iter": 4,
+    "round_digits": 3,
+    "test_size": 0.2,
+    "random_state": 42,
+    "normalization": "MinMaxScaler + MIN_POSITIVE (MIN_POSITIVE=0.01) - higher than codes (1e-6) to prevent NaN in log_activation",
+    "target_transform": "none (raw values, same as codes/ENB/mtr_ginn_sym.py)",
+    "min_positive": 0.01,
+    "note": "Only features use higher MIN_POSITIVE (1e-2 vs 1e-6). Targets unchanged (already positive). log_activation unchanged."
+  },
+  "data_info": {
+    "n_features": 8,
+    "n_train": 614,
+    "n_test": 154,
+    "target_range_train": [
+      6.01,
+      43.1
+    ],
+    "target_mean_train": 22.1550325732899,
+    "target_range_test": [
+      6.37,
+      42.96
+    ],
+    "target_mean_test": 22.913896103896104
+  },
+  "metrics": {
+    "MSE": 0.8725381617136194,
+    "MAE": 0.7501724230778682,
+    "RMSE": 0.9340975118870725,
+    "MAPE": 3.7159850586755305
+  },
+  "recovered_equation": "4.106*X_2**1.222*X_3**2.482*X_4**7.952*X_6**0.058/(X_0**6.469*X_1**0.242*X_5**0.002*X_7**0.e-3) + 4.214*X_0**0.206*X_1**0.447*X_2**0.285*X_5**0.006*X_6**0.241/(X_3**0.741*X_4**0.482*X_7**0.026) + 4.935*X_0**0.439*X_1**0.94*X_4**1.488*X_6**0.154/(X_2**1.644*X_3**0.945*X_5**0.001*X_7**0.024) - 2.672*X_0**1.556*X_2**1.607*X_3**2.122*X_5**0.03*X_6**0.251/(X_1**0.243*X_4**1.152*X_7**0.045) - 0.496*X_0**14.998*X_2**0.49*X_4**0.015*X_6**0.104/(X_1**0.126*X_3**0.772*X_7**0.026)",
+  "model_info": {
+    "final_blocks": 5
+  }
+}
