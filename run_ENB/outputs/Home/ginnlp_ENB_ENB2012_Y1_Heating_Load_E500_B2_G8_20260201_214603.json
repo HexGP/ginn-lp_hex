@@ -1,0 +1,50 @@
+{
+  "experiment_info": {
+    "timestamp": "20260201_214603",
+    "dataset": "ENB",
+    "target_id": "Y1",
+    "target_name": "Heating_Load",
+    "data_file": "run_ENB/data/ENB2012_Heating_Load.csv",
+    "dataset_name": "ENB2012_Heating_Load",
+    "num_epochs": 500,
+    "start_ln_blocks": 2,
+    "growth_steps": 8,
+    "learning_rate": 0.01,
+    "l1_reg": 0.0001,
+    "l2_reg": 0.0001,
+    "reg_change": 0.5,
+    "train_iter": 4,
+    "round_digits": 3,
+    "test_size": 0.2,
+    "random_state": 42,
+    "normalization": "MinMaxScaler + MIN_POSITIVE (MIN_POSITIVE=0.01) - higher than codes (1e-6) to prevent NaN in log_activation",
+    "target_transform": "none (raw values, same as codes/ENB/mtr_ginn_sym.py)",
+    "min_positive": 0.01,
+    "note": "Only features use higher MIN_POSITIVE (1e-2 vs 1e-6). Targets unchanged (already positive). log_activation unchanged."
+  },
+  "data_info": {
+    "n_features": 8,
+    "n_train": 614,
+    "n_test": 154,
+    "target_range_train": [
+      6.01,
+      43.1
+    ],
+    "target_mean_train": 22.1550325732899,
+    "target_range_test": [
+      6.37,
+      42.96
+    ],
+    "target_mean_test": 22.913896103896104
+  },
+  "metrics": {
+    "MSE": 0.34356022315962625,
+    "MAE": 0.45702296120779845,
+    "RMSE": 0.5861401054011116,
+    "MAPE": 2.23747962355325
+  },
+  "recovered_equation": "15.731*X_2**1.783*X_3**1.364*X_4**9.136*X_5**0.015*X_6**0.028*X_7**0.004/(X_0**2.71*X_1**1.149) - 0.427*X_1**0.57*X_2**6.155*X_4**1.418*X_6**0.065*X_7**0.002/(X_0**2.064*X_3**0.606*X_5**0.012) + 0.98*X_3**0.429*X_4**0.203*X_5**0.023*X_6**6.347*X_7**0.276/(X_0**0.339*X_1**0.586*X_2**0.089) - 1.249*X_3**2.231*X_4**2.469*X_5**1.106/(X_0**0.309*X_1**0.298*X_2**1.22*X_6**0.125*X_7**0.15) - 0.405*X_3**0.352*X_4**0.053*X_5**0.263*X_6**1.034*X_7**2.046/(X_0**0.225*X_1**0.115*X_2**0.033) + 9.575*X_0**0.301*X_2**3.507*X_3**0.824*X_5**0.005*X_6**0.116/(X_1**1.155*X_4**0.647*X_7**0.009) + 11.774*X_0**0.714*X_1**0.554*X_2**0.007*X_6**0.354/(X_3**0.608*X_4**0.145*X_5**0.028*X_7**0.073) + 2.066*X_0**1.389*X_1**0.631*X_2**0.174*X_5**0.018*X_7**0.428/(X_3**0.638*X_4**0.568*X_6**0.336) + 1.673*X_0**2.022*X_1**0.727*X_2**0.241*X_5**0.071*X_6**0.18/(X_3**0.572*X_4**0.891*X_7**0.122) + 7.766*X_0**5.997*X_1**2.303*X_4**3.602*X_5**0.017*X_6**0.04/(X_2**3.777*X_3**1.347)",
+  "model_info": {
+    "final_blocks": 10
+  }
+}

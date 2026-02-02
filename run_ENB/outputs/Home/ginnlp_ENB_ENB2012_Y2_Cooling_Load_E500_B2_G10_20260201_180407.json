@@ -1,0 +1,50 @@
+{
+  "experiment_info": {
+    "timestamp": "20260201_180407",
+    "dataset": "ENB",
+    "target_id": "Y2",
+    "target_name": "Cooling_Load",
+    "data_file": "run_ENB/data/ENB2012_Cooling_Load.csv",
+    "dataset_name": "ENB2012_Cooling_Load",
+    "num_epochs": 500,
+    "start_ln_blocks": 2,
+    "growth_steps": 10,
+    "learning_rate": 0.01,
+    "l1_reg": 0.0001,
+    "l2_reg": 0.0001,
+    "reg_change": 0.5,
+    "train_iter": 4,
+    "round_digits": 3,
+    "test_size": 0.2,
+    "random_state": 42,
+    "normalization": "MinMaxScaler + MIN_POSITIVE (MIN_POSITIVE=0.01) - higher than codes (1e-6) to prevent NaN in log_activation",
+    "target_transform": "none (raw values, same as codes/ENB/mtr_ginn_sym.py)",
+    "min_positive": 0.01,
+    "note": "Only features use higher MIN_POSITIVE (1e-2 vs 1e-6). Targets unchanged (already positive). log_activation unchanged."
+  },
+  "data_info": {
+    "n_features": 8,
+    "n_train": 614,
+    "n_test": 154,
+    "target_range_train": [
+      10.9,
+      48.03
+    ],
+    "target_mean_train": 24.410765472312704,
+    "target_range_test": [
+      11.29,
+      46.23
+    ],
+    "target_mean_test": 25.293441558441558
+  },
+  "metrics": {
+    "MSE": 2.5185969795000314,
+    "MAE": 1.0232204271291754,
+    "RMSE": 1.5870088151929187,
+    "MAPE": 3.592505418915822
+  },
+  "recovered_equation": "17.78*X_2**1.67*X_3**1.866*X_4**10.024*X_5**0.002*X_6**0.032*X_7**0.018/(X_0**4.021*X_1**0.215) + 1.251*X_1**2.153*X_2**1.812*X_3**2.928*X_4**2.832*X_6**0.232/(X_0**1.022*X_5**1.281*X_7**0.369) - 0.297*X_1**1.299*X_3**3.881*X_4**0.272*X_5**0.147*X_6**0.32*X_7**2.75/(X_0**0.476*X_2**0.267) - 1.172*X_1**1.046*X_3**2.017*X_4**2.893*X_5**0.055*X_6**1.15/(X_0**0.46*X_2**1.147*X_7**1.558) + 2.054*X_2**0.774*X_3**1.489*X_4**2.191*X_5**6.804*X_6**0.91/(X_0**0.422*X_1**0.975*X_7**1.372) + 3.583*X_4**0.108*X_5**0.008*X_6**1.121*X_7**0.043/(X_0**0.054*X_1**0.029*X_2**0.066*X_3**0.13) + 0.533*X_0**0.124*X_2**0.122*X_3**0.097*X_7**0.555/(X_1**0.268*X_4**0.359*X_5**0.029*X_6**0.393) + 5.072*X_0**0.546*X_2**4.341*X_3**0.319*X_5**0.012*X_6**0.075/(X_1**1.399*X_4**1.021*X_7**0.064) + 1.687*X_0**1.196*X_1**0.121*X_2**0.195*X_5**0.02*X_6**0.147/(X_3**0.415*X_4**0.837*X_7**0.112) + 25.23*X_0**2.028*X_1**1.212*X_4**1.162*X_6**0.025*X_7**0.022/(X_2**1.243*X_3**0.75*X_5**0.004) - 0.977*X_0**2.369*X_2**1.343*X_3**1.318*X_4**1.3*X_6**0.141*X_7**2.478/(X_1**0.647*X_5**1.098) + 1.347*X_0**3.568*X_1**0.39*X_3**0.654*X_4**0.945*X_6**0.205/(X_2**0.65*X_5**0.558*X_7**0.263)",
+  "model_info": {
+    "final_blocks": 12
+  }
+}
